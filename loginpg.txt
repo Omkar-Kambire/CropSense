@@ -1,0 +1,54 @@
+$username = $password = "";
+$err = "";
+
+// if request method is post
+if ($_SERVER['REQUEST_METHOD'] == "POST") {
+  if (empty(trim($_POST['username'])) || empty(trim($_POST['password']))) {
+    $err = '<div class="alert alert-danger" role="alert">
+        Please Enter Username and Password properly
+      </div>';
+  } else {
+    $username = trim($_POST['username']);
+    $password = trim($_POST['password']);
+  }
+
+
+  if (empty($err)) {
+    $sql = "SELECT user_id, username, password FROM users WHERE username = ?"; //query statement with question mark to bind it with values later
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "s", $param_username);
+    $param_username = $username;
+
+
+    // Try to execute this statement
+    if (mysqli_stmt_execute($stmt)) { // executing the stmt variable query
+      mysqli_stmt_store_result($stmt); // storing the result in the stmt variable
+
+      if (mysqli_stmt_num_rows($stmt) == 1) {
+        mysqli_stmt_bind_result($stmt, $id, $username, $hashed_password); //bind the result with stmt variable
+        if (mysqli_stmt_fetch($stmt)) {
+          // $verify = password_verify($password, $hashed_password);
+
+          $verify = hash_equals($hashed_password, crypt($password, $hashed_password));
+          if ($verify == true) {
+            // this means the password is corrct. Allow user to login
+            session_start();
+            $_SESSION["username"] = $username;
+            $_SESSION["id"] = $id;
+            $_SESSION["loggedin"] = true;
+
+            //Redirect user to welcome page
+            header("location: welcome.php");
+          } else //display the error of mismatch of the password
+          {
+            echo '<div class="alert alert-danger" role="alert">
+                            Password Do not Match please Enter correct password
+                          </div>';
+          }
+        }
+      }
+    }
+  } else {
+    echo $err;
+  }
+}
